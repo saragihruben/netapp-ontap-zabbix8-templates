@@ -237,4 +237,11 @@ independently).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+This project is licensed under the **GNU Affero General Public License v3.0**
+(AGPLv3) — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+The Zabbix template under `zabbix/` is derived from Zabbix's official NetApp
+template, which is AGPLv3-licensed (Zabbix 7.0+, GPLv2 in 6.4 and earlier).
+That copyleft carries into any derivative, so the whole repository — including
+the original poller, systemd units and agent config — is released under AGPLv3
+to keep a single consistent license. See `NOTICE` for upstream attribution.

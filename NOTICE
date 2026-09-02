@@ -1,0 +1,19 @@
+netapp-ontap-zabbix8-templates
+Copyright (C) 2026 Ruben Saragih
+
+This repository includes a Zabbix monitoring template derived from the official
+Zabbix template for NetApp ONTAP ("NetApp AFF A700 by HTTP"), which ships as part
+of Zabbix and is licensed under the GNU Affero General Public License v3.0
+(Zabbix 7.0 and later; GNU GPL v2 in Zabbix 6.4 and earlier).
+
+    Zabbix                    https://www.zabbix.com
+    Zabbix source & templates https://git.zabbix.com
+
+Because the template in zabbix/ is a derivative work of that AGPLv3-licensed
+template, this repository as a whole is distributed under the GNU Affero General
+Public License v3.0. See LICENSE for the full license text.
+
+The original components authored by Ruben Saragih — the ONTAP REST poller
+(poller/ontap-poller.py), the systemd units, the Zabbix Agent 2 configuration
+(agent/), and the documentation (docs/, README.md) — are also released under
+AGPLv3 so the whole project carries a single, consistent license.

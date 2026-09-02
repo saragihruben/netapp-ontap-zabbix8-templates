@@ -1,6 +1,6 @@
 [Unit]
 Description=NetApp ONTAP REST poller for Zabbix (writes JSON cache files)
-Documentation=https://github.com/CHANGE_ME/zabbix-ontap-snapmirror
+Documentation=https://github.com/saragihruben/netapp-ontap-zabbix8-templates
 After=network-online.target
 Wants=network-online.target
 
