@@ -1,0 +1,30 @@
+# ontap-poller.conf  —  copy to /etc/ontap-poller.conf
+#   chown zabbix:zabbix /etc/ontap-poller.conf
+#   chmod 600 /etc/ontap-poller.conf
+#
+# One [cluster:<id>] section per ONTAP / FSx cluster. The <id> after the colon
+# MUST match the {$NETAPP.CLUSTER.ID} macro on the matching Zabbix host, because
+# the poller writes /var/cache/ontap/<id>_<endpoint>.json and the agent reads it
+# back with netapp.raw[<id>,<endpoint>].
+
+[main]
+cache_dir = /var/cache/ontap
+timeout   = 15
+
+# ----- On-premises source cluster (AFF-A20) -----------------------------------
+[cluster:onprem]
+host        = 172.28.67.10        # ONTAP cluster-management LIF
+username    = metric-user
+password    = CHANGE_ME
+verify_ssl  = false               # set true once you trust the cluster certificate
+# SnapMirror relationship health is read from the DESTINATION cluster, so the
+# source side does not need it. Leave false to keep that host's SnapMirror LLD empty.
+snapmirror  = false
+
+# ----- Destination cluster (Amazon FSx for NetApp ONTAP) ----------------------
+[cluster:fsx]
+host        = 10.100.99.4         # FSx file-system management endpoint
+username    = fsxadmin            # or a dedicated read-only user
+password    = CHANGE_ME
+verify_ssl  = false
+snapmirror  = true                # relationship health + lag are discovered here

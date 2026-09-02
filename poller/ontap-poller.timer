@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the NetApp ONTAP poller every minute
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+AccuracySec=5s
+Unit=ontap-poller.service
+
+[Install]
+WantedBy=timers.target

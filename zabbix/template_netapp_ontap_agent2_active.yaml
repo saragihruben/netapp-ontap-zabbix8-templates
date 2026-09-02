@@ -1,0 +1,1557 @@
+zabbix_export:
+  version: '8.0'
+  template_groups:
+    - uuid: 3d41acceba6843019824e61043459bcc
+      name: Templates/Storage
+  templates:
+    - uuid: ad9c46535b9a46069a5f3eedec9a9588
+      template: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+      name: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+      description: |
+        NetApp ONTAP monitoring for Zabbix 8 using ONLY Zabbix Agent 2 active checks.
+        Data flow: ontap_poller.py (systemd timer) -> ONTAP REST API -> JSON cache files -> UserParameter netapp.raw[*] -> master items -> LLD + dependent items.
+        Covers: cluster info & performance (IOPS/latency/throughput), nodes (state, HW health), aggregates (state, capacity, perf), volumes (state, capacity, perf), SVMs, disk summary, SnapMirror relationships (healthy, state, lag).
+        Apply once per monitored cluster: set {$NETAPP.CLUSTER.ID} per host (onprem / fsx) and make sure the agent Hostname list contains each Zabbix host name.
+        Tested against ONTAP 9.13+ REST API (AFF A-series, incl. AFF-A20) and FSx for ONTAP.
+      groups:
+        - name: Templates/Storage
+      items:
+        - uuid: 97a9f94d8c2045aba96cfa62fc278f48
+          name: 'Cluster: IOPS other'
+          type: DEPENDENT
+          key: 'netapp.cluster.iops[other]'
+          history: 7d
+          value_type: FLOAT
+          units: ops
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.iops.other
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: 0f620ad273db4e1080e44d12a36fcaa3
+          name: 'Cluster: IOPS read'
+          type: DEPENDENT
+          key: 'netapp.cluster.iops[read]'
+          history: 7d
+          value_type: FLOAT
+          units: ops
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.iops.read
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: 6b5ed32e01d548009adda9e0f3999041
+          name: 'Cluster: IOPS total'
+          type: DEPENDENT
+          key: 'netapp.cluster.iops[total]'
+          history: 7d
+          value_type: FLOAT
+          units: ops
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.iops.total
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: 2c4a4facd4c04c0085d37da653f3aabc
+          name: 'Cluster: IOPS write'
+          type: DEPENDENT
+          key: 'netapp.cluster.iops[write]'
+          history: 7d
+          value_type: FLOAT
+          units: ops
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.iops.write
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: 2602ffbeedd346a895316f24e608504f
+          name: 'Cluster: latency other'
+          type: DEPENDENT
+          key: 'netapp.cluster.latency[other]'
+          history: 7d
+          value_type: FLOAT
+          units: ms
+          description: 'ONTAP reports microseconds; converted to ms.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.latency.other
+            - type: MULTIPLIER
+              parameters:
+                - '0.001'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: 81ada535b2ec46f89b30ec3f92c14955
+          name: 'Cluster: latency read'
+          type: DEPENDENT
+          key: 'netapp.cluster.latency[read]'
+          history: 7d
+          value_type: FLOAT
+          units: ms
+          description: 'ONTAP reports microseconds; converted to ms.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.latency.read
+            - type: MULTIPLIER
+              parameters:
+                - '0.001'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: b9c5d3b6e172435c82062f3802c172da
+          name: 'Cluster: latency total'
+          type: DEPENDENT
+          key: 'netapp.cluster.latency[total]'
+          history: 7d
+          value_type: FLOAT
+          units: ms
+          description: 'ONTAP reports microseconds; converted to ms.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.latency.total
+            - type: MULTIPLIER
+              parameters:
+                - '0.001'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+          triggers:
+            - uuid: f550a66942cb44adae1a9302eac54b20
+              expression: 'avg(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.cluster.latency[total],5m)>{$NETAPP.CLUSTER.LAT.HIGH}'
+              name: 'NetApp [{$NETAPP.CLUSTER.ID}]: cluster average latency > {$NETAPP.CLUSTER.LAT.HIGH} ms (5m avg)'
+              priority: HIGH
+            - uuid: a05e0a04a7c245029380fa89d1891d64
+              expression: 'avg(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.cluster.latency[total],5m)>{$NETAPP.CLUSTER.LAT.WARN}'
+              name: 'NetApp [{$NETAPP.CLUSTER.ID}]: cluster average latency > {$NETAPP.CLUSTER.LAT.WARN} ms (5m avg)'
+              priority: WARNING
+        - uuid: db74b7eb10674619b66e25331d7c395b
+          name: 'Cluster: latency write'
+          type: DEPENDENT
+          key: 'netapp.cluster.latency[write]'
+          history: 7d
+          value_type: FLOAT
+          units: ms
+          description: 'ONTAP reports microseconds; converted to ms.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.latency.write
+            - type: MULTIPLIER
+              parameters:
+                - '0.001'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: 64073872b1c84951a89e0ea2a607bc48
+          name: 'Cluster: perf metric status'
+          type: DEPENDENT
+          key: netapp.cluster.metric.status
+          history: 7d
+          value_type: CHAR
+          description: '"ok" means performance data is fresh on the cluster side.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.status
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: 7697e313db67421c91525d78e529e2c8
+          name: 'Cluster: name'
+          type: DEPENDENT
+          key: netapp.cluster.name
+          history: 7d
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.name
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: 640107e0181e45829f161d0605d0f806
+          name: 'Cluster: throughput other'
+          type: DEPENDENT
+          key: 'netapp.cluster.throughput[other]'
+          history: 7d
+          value_type: FLOAT
+          units: Bps
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.throughput.other
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: 577bd7e528bf40efa6ca6bd6275c5616
+          name: 'Cluster: throughput read'
+          type: DEPENDENT
+          key: 'netapp.cluster.throughput[read]'
+          history: 7d
+          value_type: FLOAT
+          units: Bps
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.throughput.read
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: 58238e83f5bc47f4a952d10f0515b25d
+          name: 'Cluster: throughput total'
+          type: DEPENDENT
+          key: 'netapp.cluster.throughput[total]'
+          history: 7d
+          value_type: FLOAT
+          units: Bps
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.throughput.total
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: bd6a2cb0da9147259793529405f0f726
+          name: 'Cluster: throughput write'
+          type: DEPENDENT
+          key: 'netapp.cluster.throughput[write]'
+          history: 7d
+          value_type: FLOAT
+          units: Bps
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.metric.throughput.write
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+        - uuid: 7a66d3133bc641e499ad29270b6cfcde
+          name: 'Cluster: ONTAP version'
+          type: DEPENDENT
+          key: netapp.cluster.version
+          history: 7d
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.version.full
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          tags:
+            - tag: component
+              value: cluster
+          triggers:
+            - uuid: b0cd4927d58a443a9d56d5e2fd0dafa0
+              expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.cluster.version,#1)<>last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.cluster.version,#2) and length(last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.cluster.version))>0'
+              name: 'NetApp [{$NETAPP.CLUSTER.ID}]: ONTAP version has changed (new: {ITEM.LASTVALUE})'
+              priority: INFO
+              manual_close: 'YES'
+        - uuid: 32004d34fd7b4b7985a3a9e99f73141e
+          name: 'Disks: broken count'
+          type: DEPENDENT
+          key: netapp.disk.broken
+          history: 7d
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.records[?(@.state==''broken'')].length()'
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},disks]'
+          tags:
+            - tag: component
+              value: disk
+          triggers:
+            - uuid: ef0f6b34100d4f5f8bc84c67e73d002e
+              expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.disk.broken)>0'
+              name: 'NetApp [{$NETAPP.CLUSTER.ID}]: {ITEM.LASTVALUE} broken disk(s) detected'
+              priority: HIGH
+        - uuid: 0e9004f55aad436386534467665cb473
+          name: 'Disks: spare count'
+          type: DEPENDENT
+          key: netapp.disk.spare
+          history: 7d
+          description: 'On FSx the disk endpoint is not exposed; stays 0.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.records[?(@.container_type==''spare'')].length()'
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},disks]'
+          tags:
+            - tag: component
+              value: disk
+        - uuid: c62dbabde5ec4102972a9e8f6e12209e
+          name: 'Disks: total count'
+          type: DEPENDENT
+          key: netapp.disk.total
+          history: 7d
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.records.length()
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},disks]'
+          tags:
+            - tag: component
+              value: disk
+        - uuid: e99c8d8f5d0b4eff9bca69702cf3f6a8
+          name: 'Cluster peers: unavailable count'
+          type: DEPENDENT
+          key: netapp.peer.unavailable
+          history: 7d
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - 'try { var d = JSON.parse(value); return d.records.filter(function (r) { return !r.status || r.status.state !== ''available''; }).length; } catch (e) { return 0; }'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},peers]'
+          tags:
+            - tag: component
+              value: disk
+          triggers:
+            - uuid: d39a0839da784f4cac5909be92ba10e6
+              expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.peer.unavailable)>0'
+              name: 'NetApp [{$NETAPP.CLUSTER.ID}]: cluster peer unavailable'
+              priority: DISASTER
+        - uuid: 03c7f4acd0fe424db06a5c3c32c83a18
+          name: 'Raw: aggregates'
+          type: ZABBIX_ACTIVE
+          key: 'netapp.raw[{$NETAPP.CLUSTER.ID},aggregates]'
+          history: '0'
+          value_type: TEXT
+          description: 'Raw JSON from cached ONTAP REST endpoint (aggregates). Populated by ontap_poller.py.'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 1101c37882c64a5a87736533468e0ba6
+          name: 'Raw: cluster'
+          type: ZABBIX_ACTIVE
+          key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
+          history: '0'
+          value_type: TEXT
+          description: 'Raw JSON from cached ONTAP REST endpoint (cluster). Populated by ontap_poller.py.'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 6e34c720eef74ed5ac7881a114515267
+          name: 'Raw: disks'
+          type: ZABBIX_ACTIVE
+          key: 'netapp.raw[{$NETAPP.CLUSTER.ID},disks]'
+          history: '0'
+          value_type: TEXT
+          description: 'Raw JSON from cached ONTAP REST endpoint (disks). Populated by ontap_poller.py.'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: afa0c8ad667b4af89875163d1b894870
+          name: 'Raw: nodes'
+          type: ZABBIX_ACTIVE
+          key: 'netapp.raw[{$NETAPP.CLUSTER.ID},nodes]'
+          history: '0'
+          value_type: TEXT
+          description: 'Raw JSON from cached ONTAP REST endpoint (nodes). Populated by ontap_poller.py.'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: ef0bcb4a597e482b8c4dd5c3f954858f
+          name: 'Raw: cluster peers'
+          type: ZABBIX_ACTIVE
+          key: 'netapp.raw[{$NETAPP.CLUSTER.ID},peers]'
+          history: '0'
+          value_type: TEXT
+          description: 'Raw JSON from cached ONTAP REST endpoint (svms). Populated by ontap_poller.py.'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: f9c03717097144bb99b585f4daf1592a
+          name: 'Raw: SnapMirror'
+          type: ZABBIX_ACTIVE
+          key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
+          history: '0'
+          value_type: TEXT
+          description: 'Raw JSON from cached ONTAP REST endpoint (snapmirror). Populated by ontap_poller.py.'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: cdfdce1291eb4b4c83c1bdf050e65a3f
+          name: 'Raw: SVMs'
+          type: ZABBIX_ACTIVE
+          key: 'netapp.raw[{$NETAPP.CLUSTER.ID},svms]'
+          history: '0'
+          value_type: TEXT
+          description: 'Raw JSON from cached ONTAP REST endpoint (svms). Populated by ontap_poller.py.'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 88e33c1f7be04247a854e9ffc1b61bd1
+          name: 'Raw: volumes'
+          type: ZABBIX_ACTIVE
+          key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+          history: '0'
+          value_type: TEXT
+          description: 'Raw JSON from cached ONTAP REST endpoint (volumes). Populated by ontap_poller.py.'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 5396d995a1054ba7af54fa4b0f1ad82e
+          name: 'SnapMirror: relationship count'
+          type: DEPENDENT
+          key: netapp.sm.count
+          history: 7d
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.records.length()
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
+          tags:
+            - tag: component
+              value: disk
+        - uuid: 8cbdd35aa4294f7193c55a6266a365b1
+          name: 'SnapMirror: unhealthy count'
+          type: DEPENDENT
+          key: netapp.sm.unhealthy_count
+          history: 7d
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - 'try { var d = JSON.parse(value); return d.records.filter(function (r) { return r.healthy === false; }).length; } catch (e) { return 0; }'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
+          tags:
+            - tag: component
+              value: disk
+        - uuid: 75dc51623e0f4b52a967f4f6bab2f866
+          name: 'Volumes: total count'
+          type: DEPENDENT
+          key: netapp.vol.count
+          history: 7d
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.records.length()
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+          tags:
+            - tag: component
+              value: disk
+        - uuid: cd950404d5ec4f48b0891b358520f2f5
+          name: 'Poller: cache data age'
+          type: ZABBIX_ACTIVE
+          key: 'vfs.file.time["{$NETAPP.CACHE.DIR}/{$NETAPP.CLUSTER.ID}_cluster.json",modify]'
+          history: 7d
+          units: unixtime
+          description: 'Modification time of the cluster cache file. Detects a dead/stuck poller.'
+          tags:
+            - tag: component
+              value: health
+          triggers:
+            - uuid: e6d4a866aa6746088222d4a16ed699c4
+              expression: 'fuzzytime(/NetApp ONTAP AFF-A20 - Zabbix Agent2/vfs.file.time["{$NETAPP.CACHE.DIR}/{$NETAPP.CLUSTER.ID}_cluster.json",modify],{$NETAPP.DATA.MAXAGE})=0'
+              name: 'NetApp [{$NETAPP.CLUSTER.ID}]: cache data is stale (poller not running)'
+              priority: WARNING
+              description: 'ontap_poller.py has not refreshed cache files. Check systemd timer ontap-poller.timer and API connectivity.'
+      discovery_rules:
+        - uuid: cfc4aac39c70429c88ffa2ee94aee2f6
+          name: 'Aggregate discovery'
+          type: DEPENDENT
+          key: netapp.aggr.discovery
+          item_prototypes:
+            - uuid: c29d6ee1d503403e8035ae73972beee1
+              name: 'Aggregate {#AGGRNAME}: IOPS total'
+              type: DEPENDENT
+              key: 'netapp.aggr.iops[{#AGGRNAME},total]'
+              history: 7d
+              value_type: FLOAT
+              units: ops
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#AGGRNAME}'')].metric.iops.total.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},aggregates]'
+              tags:
+                - tag: component
+                  value: aggregate
+            - uuid: 422fac996a044131a4c76ef9ddef8351
+              name: 'Aggregate {#AGGRNAME}: latency total'
+              type: DEPENDENT
+              key: 'netapp.aggr.latency[{#AGGRNAME},total]'
+              history: 7d
+              value_type: FLOAT
+              units: ms
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#AGGRNAME}'')].metric.latency.total.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: MULTIPLIER
+                  parameters:
+                    - '0.001'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},aggregates]'
+              tags:
+                - tag: component
+                  value: aggregate
+            - uuid: 6a1e15ae3cc74d1c9c644e74a1858d86
+              name: 'Aggregate {#AGGRNAME}: available'
+              type: DEPENDENT
+              key: 'netapp.aggr.space.avail[{#AGGRNAME}]'
+              history: 7d
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#AGGRNAME}'')].space.block_storage.available.first()'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},aggregates]'
+              tags:
+                - tag: component
+                  value: aggregate
+            - uuid: a617fdde439c4b16b14155d5c840ae18
+              name: 'Aggregate {#AGGRNAME}: used, %'
+              type: DEPENDENT
+              key: 'netapp.aggr.space.pused[{#AGGRNAME}]'
+              history: 7d
+              value_type: FLOAT
+              units: '%'
+              description: 'Computed in preprocessing from block_storage.used/size of the same record.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#AGGRNAME}'')].first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '{}'
+                - type: JAVASCRIPT
+                  parameters:
+                    - 'try { var o = JSON.parse(value); var b = o.space.block_storage; if (!b || !b.size || b.size == 0) return 0; return (100 * b.used / b.size).toFixed(4); } catch (e) { return 0; }'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},aggregates]'
+              tags:
+                - tag: component
+                  value: aggregate
+              trigger_prototypes:
+                - uuid: 20f2359857dd4323b383dbb7920cce9e
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.aggr.space.pused[{#AGGRNAME}])>{$NETAPP.AGGR.PUSED.HIGH:"{#AGGRNAME}"}'
+                  name: 'Aggregate {#AGGRNAME}: used > {$NETAPP.AGGR.PUSED.HIGH:"{#AGGRNAME}"}%'
+                  priority: HIGH
+                - uuid: 25da640af8ba4f4da7dbbf5ceae5125c
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.aggr.space.pused[{#AGGRNAME}])>{$NETAPP.AGGR.PUSED.WARN:"{#AGGRNAME}"}'
+                  name: 'Aggregate {#AGGRNAME}: used > {$NETAPP.AGGR.PUSED.WARN:"{#AGGRNAME}"}%'
+                  priority: WARNING
+            - uuid: bca204aa414b496982b18dd4cff1900a
+              name: 'Aggregate {#AGGRNAME}: size'
+              type: DEPENDENT
+              key: 'netapp.aggr.space.size[{#AGGRNAME}]'
+              history: 7d
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#AGGRNAME}'')].space.block_storage.size.first()'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},aggregates]'
+              tags:
+                - tag: component
+                  value: aggregate
+            - uuid: 7f952e85369a4457828314a0b6ee45de
+              name: 'Aggregate {#AGGRNAME}: used'
+              type: DEPENDENT
+              key: 'netapp.aggr.space.used[{#AGGRNAME}]'
+              history: 7d
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#AGGRNAME}'')].space.block_storage.used.first()'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},aggregates]'
+              tags:
+                - tag: component
+                  value: aggregate
+            - uuid: ec39fd3a2b724922acb181d5fa21a30f
+              name: 'Aggregate {#AGGRNAME}: state'
+              type: DEPENDENT
+              key: 'netapp.aggr.state[{#AGGRNAME}]'
+              history: 7d
+              value_type: CHAR
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#AGGRNAME}'')].state.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},aggregates]'
+              tags:
+                - tag: component
+                  value: aggregate
+              trigger_prototypes:
+                - uuid: 41f5e1e0ed36412597e61072a8d9c50d
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.aggr.state[{#AGGRNAME}])<>"online"'
+                  name: 'Aggregate {#AGGRNAME}: state is {ITEM.LASTVALUE} (expected online)'
+                  priority: HIGH
+            - uuid: 93b4beac7e584364a68d81ee952043ca
+              name: 'Aggregate {#AGGRNAME}: throughput total'
+              type: DEPENDENT
+              key: 'netapp.aggr.throughput[{#AGGRNAME},total]'
+              history: 7d
+              value_type: FLOAT
+              units: Bps
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#AGGRNAME}'')].metric.throughput.total.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},aggregates]'
+              tags:
+                - tag: component
+                  value: aggregate
+          graph_prototypes:
+            - uuid: 2028134f18584a04886282d1008f36db
+              name: 'Aggregate {#AGGRNAME}: performance'
+              graph_items:
+                - color: 199C0D
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.aggr.iops[{#AGGRNAME},total]'
+                - sortorder: '1'
+                  color: F63100
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.aggr.latency[{#AGGRNAME},total]'
+                - sortorder: '2'
+                  color: 3498DB
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.aggr.throughput[{#AGGRNAME},total]'
+            - uuid: c9e14ff653be4847a129fb382d4e118d
+              name: 'Aggregate {#AGGRNAME}: space used %'
+              graph_items:
+                - color: E67E22
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.aggr.space.pused[{#AGGRNAME}]'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},aggregates]'
+          lld_macro_paths:
+            - lld_macro: '{#AGGRNAME}'
+              path: $.name
+            - lld_macro: '{#NODE}'
+              path: $.node.name
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.records
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+        - uuid: 9a8ce88e349c4a7a89afbe791e3d6591
+          name: 'Node discovery'
+          type: DEPENDENT
+          key: netapp.node.discovery
+          item_prototypes:
+            - uuid: d8867050fd0641538c1d557c85f5ebd3
+              name: 'Node {#NODENAME}: NVRAM battery'
+              type: DEPENDENT
+              key: 'netapp.node.battery[{#NODENAME}]'
+              history: 7d
+              value_type: CHAR
+              description: 'Empty when the platform does not expose it (e.g. FSx).'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#NODENAME}'')].nvram.battery_state.first()'
+                  error_handler: CUSTOM_VALUE
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},nodes]'
+              tags:
+                - tag: component
+                  value: node
+              trigger_prototypes:
+                - uuid: 1188d589d3d14428b743c46a3152c691
+                  expression: 'length(last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.node.battery[{#NODENAME}]))>0 and last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.node.battery[{#NODENAME}])<>"battery_ok"'
+                  name: 'Node {#NODENAME}: NVRAM battery state is {ITEM.LASTVALUE}'
+                  priority: HIGH
+            - uuid: f50f5807030f4a3aa34aebc7b27c0486
+              name: 'Node {#NODENAME}: failed fans'
+              type: DEPENDENT
+              key: 'netapp.node.failed_fans[{#NODENAME}]'
+              history: 7d
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#NODENAME}'')].controller.failed_fan.count.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},nodes]'
+              tags:
+                - tag: component
+                  value: node
+              trigger_prototypes:
+                - uuid: 0f36dd277c1e49179ae0b5bf131eb848
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.node.failed_fans[{#NODENAME}])>0'
+                  name: 'Node {#NODENAME}: {ITEM.LASTVALUE} failed fan(s)'
+                  priority: AVERAGE
+            - uuid: 77535714db154ec5a11b51ef0ba06254
+              name: 'Node {#NODENAME}: failed PSUs'
+              type: DEPENDENT
+              key: 'netapp.node.failed_psu[{#NODENAME}]'
+              history: 7d
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#NODENAME}'')].controller.failed_power_supply.count.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},nodes]'
+              tags:
+                - tag: component
+                  value: node
+              trigger_prototypes:
+                - uuid: e3384b349b0a40bdb107492feac8d24d
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.node.failed_psu[{#NODENAME}])>0'
+                  name: 'Node {#NODENAME}: {ITEM.LASTVALUE} failed power suppl(y/ies)'
+                  priority: AVERAGE
+            - uuid: 1e98eac716094885bfbd68c319c355eb
+              name: 'Node {#NODENAME}: cluster membership'
+              type: DEPENDENT
+              key: 'netapp.node.membership[{#NODENAME}]'
+              history: 7d
+              value_type: CHAR
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#NODENAME}'')].membership.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},nodes]'
+              tags:
+                - tag: component
+                  value: node
+              trigger_prototypes:
+                - uuid: 2875f35c811f40a08ac05213e3831ed2
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.node.membership[{#NODENAME}])<>"member"'
+                  name: 'Node {#NODENAME}: membership is {ITEM.LASTVALUE}'
+                  priority: WARNING
+            - uuid: 93875731eec84cf496b2d1e61535dfb9
+              name: 'Node {#NODENAME}: over-temperature'
+              type: DEPENDENT
+              key: 'netapp.node.overtemp[{#NODENAME}]'
+              history: 7d
+              value_type: CHAR
+              description: 'Empty when the platform does not expose it (e.g. FSx).'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#NODENAME}'')].controller.over_temperature.first()'
+                  error_handler: CUSTOM_VALUE
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},nodes]'
+              tags:
+                - tag: component
+                  value: node
+              trigger_prototypes:
+                - uuid: 5be9755318a143a594889bbb52b2bdbd
+                  expression: 'length(last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.node.overtemp[{#NODENAME}]))>0 and last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.node.overtemp[{#NODENAME}])<>"normal"'
+                  name: 'Node {#NODENAME}: temperature is over the limit'
+                  priority: HIGH
+            - uuid: ce575353eb654068bf22fbbf0a53b709
+              name: 'Node {#NODENAME}: state'
+              type: DEPENDENT
+              key: 'netapp.node.state[{#NODENAME}]'
+              history: 7d
+              value_type: CHAR
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#NODENAME}'')].state.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},nodes]'
+              tags:
+                - tag: component
+                  value: node
+              trigger_prototypes:
+                - uuid: 6a26896ba5e64c89aeb7a9132cd13126
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.node.state[{#NODENAME}])<>"up"'
+                  name: 'Node {#NODENAME}: state is {ITEM.LASTVALUE} (expected up)'
+                  priority: HIGH
+            - uuid: 4c1df19401054735b860a7bcd8230ce9
+              name: 'Node {#NODENAME}: uptime'
+              type: DEPENDENT
+              key: 'netapp.node.uptime[{#NODENAME}]'
+              history: 7d
+              units: uptime
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#NODENAME}'')].uptime.first()'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},nodes]'
+              tags:
+                - tag: component
+                  value: node
+              trigger_prototypes:
+                - uuid: 3b94a160f3744487a720c36b6aabaf4c
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.node.uptime[{#NODENAME}])<10m'
+                  name: 'Node {#NODENAME}: has been restarted (uptime < 10m)'
+                  priority: INFO
+                  manual_close: 'YES'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},nodes]'
+          lld_macro_paths:
+            - lld_macro: '{#MODEL}'
+              path: $.model
+            - lld_macro: '{#NODENAME}'
+              path: $.name
+            - lld_macro: '{#SN}'
+              path: $.serial_number
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.records
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+        - uuid: dfa6495277734d12b880c6a5780e7fa0
+          name: 'SnapMirror relationship discovery'
+          type: DEPENDENT
+          key: netapp.sm.discovery
+          item_prototypes:
+            - uuid: 40cd5f8b9a844b36915c86a30100afd0
+              name: 'SnapMirror {#DEST}: healthy'
+              type: DEPENDENT
+              key: 'netapp.sm.healthy[{#DEST}]'
+              history: 7d
+              description: '1 = healthy, 0 = unhealthy. Source: {#SRC}'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.destination.path==''{#DEST}'')].healthy.first()'
+                - type: BOOL_TO_DECIMAL
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
+              tags:
+                - tag: component
+                  value: snapmirror
+            - uuid: 4aa92e98d8f0417990f6328cb8ac32e6
+              name: 'SnapMirror {#DEST}: lag time'
+              type: DEPENDENT
+              key: 'netapp.sm.lag[{#DEST}]'
+              history: 7d
+              units: s
+              description: 'ISO8601 duration converted to seconds.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.destination.path==''{#DEST}'')].lag_time.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: PT0S
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var m = value.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/);
+                      if (!m) return 0;
+                      return (parseInt(m[1]||0)*86400 + parseInt(m[2]||0)*3600 + parseInt(m[3]||0)*60 + Math.round(parseFloat(m[4]||0)));
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
+              tags:
+                - tag: component
+                  value: snapmirror
+              trigger_prototypes:
+                - uuid: dbef8c904d8b41c3a2f19afdbce4f0bf
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.sm.lag[{#DEST}])>{$NETAPP.SM.LAG.HIGH:"{#SCHEDULE}"}'
+                  name: 'SnapMirror {#DEST}: lag > {$NETAPP.SM.LAG.HIGH:"{#DEST}"}s'
+                  priority: HIGH
+                - uuid: dc9dcff634364efab9da61dcf0a255af
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.sm.lag[{#DEST}])>{$NETAPP.SM.LAG.WARN:"{#SCHEDULE}"}'
+                  name: 'SnapMirror {#DEST}: lag > {$NETAPP.SM.LAG.WARN:"{#DEST}"}s'
+                  priority: WARNING
+            - uuid: 559ffa5b54c5404fb71346f88a0ed44b
+              name: 'SnapMirror {#DEST}: last transfer end'
+              type: DEPENDENT
+              key: 'netapp.sm.last_end[{#DEST}]'
+              history: 7d
+              units: unixtime
+              description: 'ISO8601 duration converted to seconds.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.destination.path==''{#DEST}'')].transfer.end_time.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      if (!value || value == '0') return 0;
+                      return Math.floor(Date.parse(value) / 1000);
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
+              tags:
+                - tag: component
+                  value: snapmirror
+            - uuid: 3d7d6e477dec4f748b87e19a8a64bc83
+              name: 'SnapMirror {#DEST}: last transfer size'
+              type: DEPENDENT
+              key: 'netapp.sm.last_size[{#DEST}]'
+              history: 7d
+              units: B
+              description: 'ISO8601 duration converted to seconds.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.destination.path==''{#DEST}'')].transfer.bytes_transferred.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
+              tags:
+                - tag: component
+                  value: snapmirror
+            - uuid: e8027199de414c839f7c5a35e4e5c5c1
+              name: 'SnapMirror {#DEST}: unhealthy reason'
+              type: DEPENDENT
+              key: 'netapp.sm.reason[{#DEST}]'
+              history: 7d
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.destination.path==''{#DEST}'')].unhealthy_reason.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '[]'
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      try { var a = JSON.parse(value); return a.map(function (x) { return x.message; }).join('; '); }
+                      catch (e) { return ''; }
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
+              tags:
+                - tag: component
+                  value: snapmirror
+            - uuid: 273e5719e61e4fee91097fc1ab447059
+              name: 'SnapMirror {#DEST}: state'
+              type: DEPENDENT
+              key: 'netapp.sm.state[{#DEST}]'
+              history: 7d
+              value_type: CHAR
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.destination.path==''{#DEST}'')].state.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
+              tags:
+                - tag: component
+                  value: snapmirror
+              trigger_prototypes:
+                - uuid: fbdabfb05a594e8980d5b67f1428a999
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.sm.state[{#DEST}])="broken_off"'
+                  name: 'SnapMirror {#DEST}: relationship is broken_off'
+                  priority: AVERAGE
+            - uuid: c67104b698bb4aef8530b269daa1f06c
+              name: 'SnapMirror {#DEST}: transfer state'
+              type: DEPENDENT
+              key: 'netapp.sm.xfer_state[{#DEST}]'
+              history: 7d
+              value_type: CHAR
+              description: 'idle when no transfer object is present.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.destination.path==''{#DEST}'')].transfer.state.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: idle
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
+              tags:
+                - tag: component
+                  value: snapmirror
+          trigger_prototypes:
+            - uuid: 30fd0ffd00b74b4c8f09529145c144a7
+              expression: 'max(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.sm.healthy[{#DEST}],{$NETAPP.SM.UNHEALTHY.DELAY})=0 and length(last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.sm.reason[{#DEST}]))>=0'
+              name: 'SnapMirror {#DEST}: unhealthy for {$NETAPP.SM.UNHEALTHY.DELAY} (reason: {ITEM.LASTVALUE2})'
+              priority: HIGH
+              description: 'Sustained unhealthy state. During baseline initialization this is expected — the delay filters the initial noise.'
+          graph_prototypes:
+            - uuid: 5268ab1ca63d4b0ebfec25eeac0e38f6
+              name: 'SnapMirror {#DEST}: lag time'
+              graph_items:
+                - color: E67E22
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.sm.lag[{#DEST}]'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
+          lld_macro_paths:
+            - lld_macro: '{#DEST}'
+              path: $.destination.path
+            - lld_macro: '{#SCHEDULE}'
+              path: $.transfer_schedule.name
+            - lld_macro: '{#SRC}'
+              path: $.source.path
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.records
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+        - uuid: 79406291c458485aa879c383b74cf075
+          name: 'SVM discovery'
+          type: DEPENDENT
+          key: netapp.svm.discovery
+          item_prototypes:
+            - uuid: 271fc8c3c5834d428d69a1372014a73e
+              name: 'SVM {#SVMNAME}: state'
+              type: DEPENDENT
+              key: 'netapp.svm.state[{#SVMNAME}]'
+              history: 7d
+              value_type: CHAR
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#SVMNAME}'')].state.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},svms]'
+              tags:
+                - tag: component
+                  value: svm
+              trigger_prototypes:
+                - uuid: 637fa8f1d35b49d09b9e7f9029755dcc
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.svm.state[{#SVMNAME}])<>"running"'
+                  name: 'SVM {#SVMNAME}: state is {ITEM.LASTVALUE} (expected running)'
+                  priority: HIGH
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},svms]'
+          lld_macro_paths:
+            - lld_macro: '{#SVMNAME}'
+              path: $.name
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.records
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+        - uuid: 888547eef51540178a802794a25a3a9d
+          name: 'Volume discovery'
+          type: DEPENDENT
+          key: netapp.vol.discovery
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#VOLNAME}'
+                value: '{$NETAPP.VOL.NAME.MATCHES}'
+              - macro: '{#VOLNAME}'
+                value: '{$NETAPP.VOL.NAME.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+          item_prototypes:
+            - uuid: 313dddbf13c94753a6a1bab65d7d5dc9
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: IOPS read'
+              type: DEPENDENT
+              key: 'netapp.vol.iops[{#SVMNAME},{#VOLNAME},read]'
+              history: 7d
+              value_type: FLOAT
+              units: ops
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].metric.iops.read.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+            - uuid: 1cc4388a004343b2822a5ef2231a74b5
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: IOPS total'
+              type: DEPENDENT
+              key: 'netapp.vol.iops[{#SVMNAME},{#VOLNAME},total]'
+              history: 7d
+              value_type: FLOAT
+              units: ops
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].metric.iops.total.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+            - uuid: 9d3f0781b31448b893e8a66c15f00fd4
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: IOPS write'
+              type: DEPENDENT
+              key: 'netapp.vol.iops[{#SVMNAME},{#VOLNAME},write]'
+              history: 7d
+              value_type: FLOAT
+              units: ops
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].metric.iops.write.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+            - uuid: e3aa5a01cc454bb1a15f9424ad4d23ca
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: latency read'
+              type: DEPENDENT
+              key: 'netapp.vol.latency[{#SVMNAME},{#VOLNAME},read]'
+              history: 7d
+              value_type: FLOAT
+              units: ms
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].metric.latency.read.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: MULTIPLIER
+                  parameters:
+                    - '0.001'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+            - uuid: 7eac76b8d1f34f328f65cfab6c1e4732
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: latency total'
+              type: DEPENDENT
+              key: 'netapp.vol.latency[{#SVMNAME},{#VOLNAME},total]'
+              history: 7d
+              value_type: FLOAT
+              units: ms
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].metric.latency.total.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: MULTIPLIER
+                  parameters:
+                    - '0.001'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+              trigger_prototypes:
+                - uuid: c51aea0379df4124a7b12e7a9d5dd582
+                  expression: 'avg(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.latency[{#SVMNAME},{#VOLNAME},total],5m)>{$NETAPP.VOL.LAT.WARN:"{#VOLNAME}"}'
+                  name: 'Volume [{#SVMNAME}/{#VOLNAME}]: read/write latency > {$NETAPP.VOL.LAT.WARN:"{#VOLNAME}"} ms (5m avg)'
+                  priority: WARNING
+            - uuid: 3a4b766fff02464698dbe9a693f532d5
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: latency write'
+              type: DEPENDENT
+              key: 'netapp.vol.latency[{#SVMNAME},{#VOLNAME},write]'
+              history: 7d
+              value_type: FLOAT
+              units: ms
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].metric.latency.write.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: MULTIPLIER
+                  parameters:
+                    - '0.001'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+            - uuid: 2965ad0ea29e49a5a9ea817c05799c11
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: available'
+              type: DEPENDENT
+              key: 'netapp.vol.space.avail[{#SVMNAME},{#VOLNAME}]'
+              history: 7d
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.available.first()'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+            - uuid: 2248e610293a4a8ea70d4326614dc785
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: physical used'
+              type: DEPENDENT
+              key: 'netapp.vol.space.physused[{#SVMNAME},{#VOLNAME}]'
+              history: 7d
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.physical_used.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+            - uuid: 5ae958d73dd248cc8bcfc6bd3a9cfce5
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: used, %'
+              type: DEPENDENT
+              key: 'netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}]'
+              history: 7d
+              value_type: FLOAT
+              units: '%'
+              description: 'Computed in preprocessing from space.used/space.size of the same record.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '{}'
+                - type: JAVASCRIPT
+                  parameters:
+                    - 'try { var o = JSON.parse(value); if (!o.space || !o.space.size || o.space.size == 0) return 0; return (100 * o.space.used / o.space.size).toFixed(4); } catch (e) { return 0; }'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+              trigger_prototypes:
+                - uuid: 85eff1fb11854c238ee79835a5cd4d25
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}])>{$NETAPP.VOL.PUSED.HIGH:"{#VOLNAME}"}'
+                  name: 'Volume [{#SVMNAME}/{#VOLNAME}]: used > {$NETAPP.VOL.PUSED.HIGH:"{#VOLNAME}"}%'
+                  priority: HIGH
+                - uuid: 2b89a3a743c943939123c679a79569c2
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}])>{$NETAPP.VOL.PUSED.WARN:"{#VOLNAME}"}'
+                  name: 'Volume [{#SVMNAME}/{#VOLNAME}]: used > {$NETAPP.VOL.PUSED.WARN:"{#VOLNAME}"}%'
+                  priority: WARNING
+            - uuid: 7229f386c13642b789036145e49ebd61
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: size'
+              type: DEPENDENT
+              key: 'netapp.vol.space.size[{#SVMNAME},{#VOLNAME}]'
+              history: 7d
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.size.first()'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+            - uuid: 55e1ce8c28b34afeaa97cd7c9bbccc26
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: used'
+              type: DEPENDENT
+              key: 'netapp.vol.space.used[{#SVMNAME},{#VOLNAME}]'
+              history: 7d
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.used.first()'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+            - uuid: 160be6d6ccf04f4288faa9f6921f2cd5
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: state'
+              type: DEPENDENT
+              key: 'netapp.vol.state[{#SVMNAME},{#VOLNAME}]'
+              history: 7d
+              value_type: CHAR
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].state.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+              trigger_prototypes:
+                - uuid: 6cc1c3c6a80748ccaa95fd3d975cab2e
+                  expression: 'last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.state[{#SVMNAME},{#VOLNAME}])<>"online"'
+                  name: 'Volume [{#SVMNAME}/{#VOLNAME}]: state is {ITEM.LASTVALUE} (expected online)'
+                  priority: HIGH
+            - uuid: aa64909e0b5d473a831befdb90452eb7
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: throughput read'
+              type: DEPENDENT
+              key: 'netapp.vol.throughput[{#SVMNAME},{#VOLNAME},read]'
+              history: 7d
+              value_type: FLOAT
+              units: Bps
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].metric.throughput.read.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+            - uuid: 838290b9c49041968ba18172251541b2
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: throughput total'
+              type: DEPENDENT
+              key: 'netapp.vol.throughput[{#SVMNAME},{#VOLNAME},total]'
+              history: 7d
+              value_type: FLOAT
+              units: Bps
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].metric.throughput.total.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+            - uuid: a1ed55b245094627815f4e507788e8e4
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: throughput write'
+              type: DEPENDENT
+              key: 'netapp.vol.throughput[{#SVMNAME},{#VOLNAME},write]'
+              history: 7d
+              value_type: FLOAT
+              units: Bps
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].metric.throughput.write.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+          graph_prototypes:
+            - uuid: fce690e69cc14e18bfd972fa9fba937d
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: IOPS'
+              graph_items:
+                - color: 199C0D
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.iops[{#SVMNAME},{#VOLNAME},read]'
+                - sortorder: '1'
+                  color: 3498DB
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.iops[{#SVMNAME},{#VOLNAME},write]'
+                - sortorder: '2'
+                  color: F63100
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.iops[{#SVMNAME},{#VOLNAME},total]'
+            - uuid: 03ae1636b161472c87d281b1719108ba
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: latency'
+              graph_items:
+                - color: 199C0D
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.latency[{#SVMNAME},{#VOLNAME},read]'
+                - sortorder: '1'
+                  color: 3498DB
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.latency[{#SVMNAME},{#VOLNAME},write]'
+                - sortorder: '2'
+                  color: F63100
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.latency[{#SVMNAME},{#VOLNAME},total]'
+            - uuid: 8800cf2c2b9e491e953446ef0b5e9509
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space used %'
+              graph_items:
+                - color: E67E22
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}]'
+          master_item:
+            key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+          lld_macro_paths:
+            - lld_macro: '{#SVMNAME}'
+              path: $.svm.name
+            - lld_macro: '{#VOLNAME}'
+              path: $.name
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.records
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+      tags:
+        - tag: class
+          value: storage
+        - tag: target
+          value: netapp
+      macros:
+        - macro: '{$NETAPP.AGGR.PUSED.HIGH}'
+          value: '90'
+          description: 'Aggregate used %% high.'
+        - macro: '{$NETAPP.AGGR.PUSED.WARN}'
+          value: '80'
+          description: 'Aggregate used %% warning. Context macro per aggregate supported.'
+        - macro: '{$NETAPP.CACHE.DIR}'
+          value: /var/cache/ontap
+          description: 'Cache directory used by ontap_poller.py and the UserParameter.'
+        - macro: '{$NETAPP.CLUSTER.ID}'
+          value: onprem
+          description: 'Cluster id — must match a [cluster:<id>] section in /etc/ontap-poller.conf (e.g. onprem, fsx).'
+        - macro: '{$NETAPP.CLUSTER.LAT.HIGH}'
+          value: '20'
+          description: 'Cluster avg latency high, ms.'
+        - macro: '{$NETAPP.CLUSTER.LAT.WARN}'
+          value: '5'
+          description: 'Cluster avg latency warning, ms.'
+        - macro: '{$NETAPP.DATA.MAXAGE}'
+          value: 15m
+          description: 'Max allowed age of cache files before the staleness trigger fires.'
+        - macro: '{$NETAPP.SM.LAG.HIGH}'
+          value: '21600'
+          description: 'SnapMirror lag high, seconds (6h).'
+        - macro: '{$NETAPP.SM.LAG.HIGH:"daily"}'
+          value: '129600'
+          description: 'SnapMirror lag high, seconds (36h).'
+        - macro: '{$NETAPP.SM.LAG.HIGH:"daily-esxi"}'
+          value: '129600'
+          description: 'SnapMirror lag high, seconds (36h).'
+        - macro: '{$NETAPP.SM.LAG.HIGH:"daily-obv"}'
+          value: '129600'
+          description: 'SnapMirror lag high, seconds (36h).'
+        - macro: '{$NETAPP.SM.LAG.HIGH:"pg-2hourly"}'
+          value: '28800'
+          description: 'SnapMirror lag high, seconds (8h).'
+        - macro: '{$NETAPP.SM.LAG.WARN}'
+          value: '10800'
+          description: 'SnapMirror lag warning, seconds (3h).'
+        - macro: '{$NETAPP.SM.LAG.WARN:"daily"}'
+          value: '108000'
+          description: 'SnapMirror lag high, seconds (30h).'
+        - macro: '{$NETAPP.SM.LAG.WARN:"daily-esxi"}'
+          value: '108000'
+          description: 'SnapMirror lag high, seconds (30h).'
+        - macro: '{$NETAPP.SM.LAG.WARN:"daily-obv"}'
+          value: '108000'
+          description: 'SnapMirror lag high, seconds (30h).'
+        - macro: '{$NETAPP.SM.LAG.WARN:"pg-2hourly"}'
+          value: '18000'
+          description: 'SnapMirror lag high, seconds (5h).'
+        - macro: '{$NETAPP.SM.UNHEALTHY.DELAY}'
+          value: 30m
+          description: 'How long a SnapMirror relationship must be unhealthy before alerting (filters baseline noise).'
+        - macro: '{$NETAPP.VOL.LAT.WARN}'
+          value: '10'
+          description: 'Volume total latency warning, ms (5m avg).'
+        - macro: '{$NETAPP.VOL.NAME.MATCHES}'
+          value: '.*'
+          description: 'Volume discovery include filter.'
+        - macro: '{$NETAPP.VOL.NAME.NOT_MATCHES}'
+          value: '^(vol0|.*_root)$'
+          description: 'Volume discovery exclude filter (node/SVM root volumes by default).'
+        - macro: '{$NETAPP.VOL.PUSED.HIGH}'
+          value: '95'
+          description: 'Volume used %% high.'
+        - macro: '{$NETAPP.VOL.PUSED.WARN}'
+          value: '85'
+          description: 'Volume used %% warning. Context macro per volume supported.'

@@ -1,0 +1,15 @@
+# real poller config holds credentials — never commit it
+ontap-poller.conf
+/etc/ontap-poller.conf
+
+# cache output
+/var/cache/ontap/
+*.json.tmp
+
+# python
+__pycache__/
+*.pyc
+
+# housekeeping
+_to_delete/
+.DS_Store

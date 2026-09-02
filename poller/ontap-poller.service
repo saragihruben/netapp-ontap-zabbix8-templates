@@ -1,0 +1,18 @@
+[Unit]
+Description=NetApp ONTAP REST poller for Zabbix (writes JSON cache files)
+Documentation=https://github.com/CHANGE_ME/zabbix-ontap-snapmirror
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=zabbix
+Group=zabbix
+ExecStart=/usr/local/bin/ontap-poller.py
+Environment=ONTAP_POLLER_CONF=/etc/ontap-poller.conf
+Nice=10
+# Hardening (optional, tighten to taste):
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/cache/ontap
+PrivateTmp=true
