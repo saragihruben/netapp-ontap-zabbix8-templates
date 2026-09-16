@@ -64,6 +64,7 @@ zabbix-ontap-snapmirror/
 | Nodes (LLD) | state, membership, uptime, over-temp, failed fans/PSUs, NVRAM battery | node not up, hardware failure, restart |
 | Aggregates (LLD) | state, size/used/available/%used, IOPS / latency / throughput | offline, > 80 % / 90 % used |
 | Volumes (LLD) | state, size/used/available/%used, IOPS / latency / throughput | offline, > 85 % / 95 % used, latency > 10 ms |
+| Volume space breakdown (LLD) | user data, metadata, snapshot used / spill / reserve, logical vs used vs physical, per-interval growth of data and snapshots | snapshot spill > 10 % / 20 % of provisioned size, projected full in < 7 d / 2 d |
 | SVMs (LLD) | state | not running |
 | Disks | total / broken / spare counts | any broken disk |
 | Cluster peers | peer + authentication state | peer unavailable |
@@ -210,6 +211,70 @@ much, disable the per-volume performance prototypes (IOPS/latency/throughput) an
 keep capacity + state, or narrow `{$NETAPP.VOL.NAME.MATCHES}`. Master items poll
 every 1 m; raise to 2–5 m for less load (the poller timer controls freshness
 independently).
+
+---
+
+## Volume space decomposition
+
+A volume filling up is not one number going up — it is one of several independent
+bands growing, and they have completely different runbooks. The template breaks
+every discovered volume into bands that **sum exactly to `space.size`**, so a
+capacity alarm names its own cause instead of leaving you to guess:
+
+```
+space.size
+├─ space.user_data          user data in the active filesystem
+├─ space.total_metadata     WAFL FS metadata + inodes + dedup/perf metadata
+├─ space.snapshot_spill     snapshot blocks beyond the reserve — steals AFS space
+└─ space.available          free
+```
+
+Verified against a live 50 GiB Trident volume: the four bands reconcile with
+`space.size` to within 3.7 MiB (0.007 %, WAFL delayed-free rounding).
+
+Use `space.total_metadata`, **not** `space.metadata` — only the former makes
+`user_data + metadata + snapshot.used` reconcile with `space.used`.
+
+Three graph prototypes per volume:
+
+| Graph | Type | Answers |
+|-------|------|---------|
+| `space composition` | stacked | *which band* grew when the volume jumped |
+| `space growth rate` | line | did the workload change regime, and when |
+| `logical vs used vs physical` | line | storage-efficiency savings, and aggregate footprint vs volume fill |
+
+### Snapshot spill on Trident volumes
+
+Trident provisions with `snapshotReserve: "0"`, so **all** snapshot consumption is
+spill by definition and a "spill > 0" trigger would fire on every volume. The
+triggers therefore threshold on spill as a *share of provisioned size*
+(`{$NETAPP.VOL.SPILL.PCT.WARN/HIGH}`, 10 % / 20 %), which is scale-free and works
+whether or not a reserve is configured.
+
+Spill is read straight from `space.snapshot_spill` — no calculated item needed.
+
+### Growth items use SIMPLE_CHANGE, not CHANGE_PER_SECOND
+
+Volume space is a **gauge**, not a counter: it goes down when snapshots are
+deleted or data is removed. Zabbix's `CHANGE_PER_SECOND` silently discards every
+decrease, so it would hide exactly the events you want to see. The growth items
+use `SIMPLE_CHANGE` and report bytes per master-item interval. Over a month the
+graph reads from trends (hourly avg), which smooths the per-poll noise.
+
+### Predictive trigger
+
+`timeleft()` runs linear regression over 7 d of `used %` and projects when the
+volume reaches 100 %, firing at 7 d and 2 d. This catches a volume at 60 % that is
+growing fast — which a static 85 % threshold does not — and is the item worth
+reading on a monthly review. It needs ≥ 7 d of history, so the volume space items
+are set to `history: 31d`, `trends: 365d`.
+
+### Cost
+
+All of these are **dependent** items, so they add no polling load — the master
+item is unchanged. Eight prototypes × ~250 volumes ≈ 2,000 extra items, and
+`DISCARD_UNCHANGED_HEARTBEAT 1h` on the capacity bands means a volume that is not
+changing writes one value per hour instead of sixty.
 
 ---
 

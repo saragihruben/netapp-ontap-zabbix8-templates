@@ -1259,7 +1259,8 @@ zabbix_export:
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: available'
               type: DEPENDENT
               key: 'netapp.vol.space.avail[{#SVMNAME},{#VOLNAME}]'
-              history: 7d
+              history: 31d
+              trends: '365d'
               units: B
               preprocessing:
                 - type: JSONPATH
@@ -1274,7 +1275,8 @@ zabbix_export:
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: physical used'
               type: DEPENDENT
               key: 'netapp.vol.space.physused[{#SVMNAME},{#VOLNAME}]'
-              history: 7d
+              history: 31d
+              trends: '365d'
               units: B
               preprocessing:
                 - type: JSONPATH
@@ -1291,7 +1293,8 @@ zabbix_export:
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: used, %'
               type: DEPENDENT
               key: 'netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}]'
-              history: 7d
+              history: 31d
+              trends: '365d'
               value_type: FLOAT
               units: '%'
               description: 'Computed in preprocessing from space.used/space.size of the same record.'
@@ -1322,7 +1325,8 @@ zabbix_export:
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: size'
               type: DEPENDENT
               key: 'netapp.vol.space.size[{#SVMNAME},{#VOLNAME}]'
-              history: 7d
+              history: 31d
+              trends: '365d'
               units: B
               preprocessing:
                 - type: JSONPATH
@@ -1337,7 +1341,8 @@ zabbix_export:
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: used'
               type: DEPENDENT
               key: 'netapp.vol.space.used[{#SVMNAME},{#VOLNAME}]'
-              history: 7d
+              history: 31d
+              trends: '365d'
               units: B
               preprocessing:
                 - type: JSONPATH
@@ -1425,6 +1430,242 @@ zabbix_export:
               tags:
                 - tag: component
                   value: volume
+            - uuid: 2d7cf25f94cf4875a9fc5b5456a17c7b
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space user data'
+              type: DEPENDENT
+              key: 'netapp.vol.space.userdata[{#SVMNAME},{#VOLNAME}]'
+              history: 31d
+              trends: '365d'
+              value_type: UNSIGNED
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.user_data.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+                - tag: component
+                  value: capacity
+            - uuid: b3022fefcccc45f0844ff25725105ba5
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space metadata'
+              type: DEPENDENT
+              key: 'netapp.vol.space.metadata[{#SVMNAME},{#VOLNAME}]'
+              history: 31d
+              trends: '365d'
+              value_type: UNSIGNED
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.total_metadata.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+                - tag: component
+                  value: capacity
+            - uuid: 07f79bf88e7a4f44b714d21bbc1b6165
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space snapshot used'
+              type: DEPENDENT
+              key: 'netapp.vol.space.snapused[{#SVMNAME},{#VOLNAME}]'
+              history: 31d
+              trends: '365d'
+              value_type: UNSIGNED
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.snapshot.used.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+                - tag: component
+                  value: capacity
+            - uuid: 18803ba82f264e1d9a39b4f1bb51f361
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space snapshot spill'
+              type: DEPENDENT
+              key: 'netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}]'
+              history: 31d
+              trends: '365d'
+              value_type: UNSIGNED
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.snapshot_spill.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+                - tag: component
+                  value: capacity
+            - uuid: cfa642b884284b548a48e214e48b4e71
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space snapshot reserve'
+              type: DEPENDENT
+              key: 'netapp.vol.space.snapreserve[{#SVMNAME},{#VOLNAME}]'
+              history: 31d
+              trends: '365d'
+              value_type: UNSIGNED
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.snapshot.reserve_size.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 6h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+                - tag: component
+                  value: capacity
+            - uuid: 493bc0435b774ed1aa7439f257552b49
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space logical used'
+              type: DEPENDENT
+              key: 'netapp.vol.space.logical[{#SVMNAME},{#VOLNAME}]'
+              history: 31d
+              trends: '365d'
+              value_type: UNSIGNED
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.logical_space.used.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+                - tag: component
+                  value: capacity
+            - uuid: 82a308663e5f4cfd949a4c1074d4951e
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: user data change per interval'
+              type: DEPENDENT
+              key: 'netapp.vol.growth.data[{#SVMNAME},{#VOLNAME}]'
+              history: 31d
+              trends: '365d'
+              value_type: FLOAT
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.user_data.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: SIMPLE_CHANGE
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+                - tag: component
+                  value: capacity
+            - uuid: 605ce77d189b4cf8ad926dba6e17b009
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: snapshot change per interval'
+              type: DEPENDENT
+              key: 'netapp.vol.growth.snap[{#SVMNAME},{#VOLNAME}]'
+              history: 31d
+              trends: '365d'
+              value_type: FLOAT
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.snapshot.used.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: SIMPLE_CHANGE
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+                - tag: component
+                  value: capacity
+          trigger_prototypes:
+            - uuid: 2072f50844eb4269bcaef03fbf50034e
+              expression: '100*last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}])/last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.size[{#SVMNAME},{#VOLNAME}])>{$NETAPP.VOL.SPILL.PCT.HIGH:"{#VOLNAME}"}'
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: snapshot spill over {$NETAPP.VOL.SPILL.PCT.HIGH}% of provisioned size'
+              event_name: 'Volume [{#SVMNAME}/{#VOLNAME}]: snapshot spill is consuming the active filesystem'
+              priority: HIGH
+              description: |
+                Snapshots are consuming space beyond the snapshot reserve, which comes straight out of
+                the active filesystem. On Trident-provisioned volumes snapshotReserve is normally 0, so
+                ALL snapshot usage is spill — this trigger therefore thresholds on spill as a share of
+                provisioned size, not on spill being non-zero.
+                Check retention depth first (volume snapshot show -fields create-time,size,owners);
+                snapshots owned by snapmirror are pinned until the next successful transfer.
+              tags:
+                - tag: scope
+                  value: capacity
+            - uuid: d0f2ec6966fd4e1385316aea3beb287b
+              expression: '100*last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}])/last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.size[{#SVMNAME},{#VOLNAME}])>{$NETAPP.VOL.SPILL.PCT.WARN:"{#VOLNAME}"}'
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: snapshot spill over {$NETAPP.VOL.SPILL.PCT.WARN}% of provisioned size'
+              priority: WARNING
+              dependencies:
+                - name: 'Volume [{#SVMNAME}/{#VOLNAME}]: snapshot spill over {$NETAPP.VOL.SPILL.PCT.HIGH}% of provisioned size'
+                  expression: '100*last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}])/last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.size[{#SVMNAME},{#VOLNAME}])>{$NETAPP.VOL.SPILL.PCT.HIGH:"{#VOLNAME}"}'
+              tags:
+                - tag: scope
+                  value: capacity
+            - uuid: 0a62f363fdda4b6f97a734b0042fbc41
+              expression: 'timeleft(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}],7d,100)<{$NETAPP.VOL.TIMELEFT.HIGH:"{#VOLNAME}"}'
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: projected full in under {$NETAPP.VOL.TIMELEFT.HIGH}'
+              priority: HIGH
+              description: |
+                Linear regression over 7d of used% projects this volume reaching 100%.
+                Fires on trend, not level — a volume at 60% growing fast is more urgent than one
+                at 90% that is flat. Cross-check the growth-rate graph to see whether user data or
+                snapshots are the component that is moving.
+              tags:
+                - tag: scope
+                  value: capacity
+            - uuid: 458e31ab66a7435bbb86b1c2b6265d05
+              expression: 'timeleft(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}],7d,100)<{$NETAPP.VOL.TIMELEFT.WARN:"{#VOLNAME}"}'
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: projected full in under {$NETAPP.VOL.TIMELEFT.WARN}'
+              priority: WARNING
+              dependencies:
+                - name: 'Volume [{#SVMNAME}/{#VOLNAME}]: projected full in under {$NETAPP.VOL.TIMELEFT.HIGH}'
+                  expression: 'timeleft(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}],7d,100)<{$NETAPP.VOL.TIMELEFT.HIGH:"{#VOLNAME}"}'
+              tags:
+                - tag: scope
+                  value: capacity
           graph_prototypes:
             - uuid: fce690e69cc14e18bfd972fa9fba937d
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: IOPS'
@@ -1467,6 +1708,58 @@ zabbix_export:
                   item:
                     host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
                     key: 'netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}]'
+            - uuid: 7d8a0b369b1c4b25ab1bd910a3d3884c
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space composition'
+              type: STACKED
+              graph_items:
+                - color: 0275B8
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.userdata[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '1'
+                  color: 7E7E7E
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.metadata[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '2'
+                  color: E67E22
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '3'
+                  color: C8C8C8
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.avail[{#SVMNAME},{#VOLNAME}]'
+            - uuid: ce3792f4ef8548fca532401a7bb38357
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space growth rate'
+              graph_items:
+                - color: 1A7C11
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.growth.data[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '1'
+                  color: E67E22
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.growth.snap[{#SVMNAME},{#VOLNAME}]'
+            - uuid: 3cf7473c9eb74dba821ba673b1ba22bd
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: logical vs used vs physical'
+              graph_items:
+                - color: 9C27B0
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.logical[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '1'
+                  color: 0275B8
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.used[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '2'
+                  color: 1A7C11
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.physused[{#SVMNAME},{#VOLNAME}]'
           master_item:
             key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
           lld_macro_paths:
@@ -1555,3 +1848,15 @@ zabbix_export:
         - macro: '{$NETAPP.VOL.PUSED.WARN}'
           value: '85'
           description: 'Volume used %% warning. Context macro per volume supported.'
+        - macro: '{$NETAPP.VOL.SPILL.PCT.HIGH}'
+          value: '20'
+          description: 'Snapshot spill high, %% of provisioned volume size. Context macro per volume supported.'
+        - macro: '{$NETAPP.VOL.SPILL.PCT.WARN}'
+          value: '10'
+          description: 'Snapshot spill warning, %% of provisioned volume size. Context macro per volume supported.'
+        - macro: '{$NETAPP.VOL.TIMELEFT.HIGH}'
+          value: 2d
+          description: 'Projected time to 100%% used, high. Regression over 7d of history.'
+        - macro: '{$NETAPP.VOL.TIMELEFT.WARN}'
+          value: 7d
+          description: 'Projected time to 100%% used, warning. Regression over 7d of history.'

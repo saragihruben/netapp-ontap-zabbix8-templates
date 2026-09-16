@@ -28,8 +28,15 @@ ENDPOINTS = {
                    "controller.over_temperature,controller.failed_fan.count,"
                    "controller.failed_power_supply.count,nvram.battery_state"),
     "aggregates": "/api/storage/aggregates?fields=name,node.name,state,space.block_storage,metric",
+    # space.* breakdown lets the template stack a volume's usage into
+    # user data / metadata / snapshot spill / free, which sums to space.size.
+    # NOTE: use space.total_metadata (not space.metadata) — only the former
+    # makes user_data + metadata + snapshot.used reconcile with space.used.
     "volumes":    ("/api/storage/volumes?fields=name,svm.name,state,type,space.size,space.available,"
-                   "space.used,space.physical_used,metric"),
+                   "space.used,space.physical_used,space.user_data,space.total_metadata,"
+                   "space.snapshot_spill,space.snapshot.used,space.snapshot.reserve_size,"
+                   "space.snapshot.reserve_percent,space.snapshot.autodelete_enabled,"
+                   "space.logical_space.used,space.percent_used,metric"),
     "svms":       "/api/svm/svms?fields=name,state",
     "peers":      "/api/cluster/peers?fields=name,status.state,authentication.state",
     "disks":      "/api/storage/disks?fields=name,state,container_type",
