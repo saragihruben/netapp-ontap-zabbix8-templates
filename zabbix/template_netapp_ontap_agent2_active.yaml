@@ -9,7 +9,7 @@ zabbix_export:
       name: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
       description: |
         NetApp ONTAP monitoring for Zabbix 8 using ONLY Zabbix Agent 2 active checks.
-        Data flow: ontap_poller.py (systemd timer) -> ONTAP REST API -> JSON cache files -> UserParameter netapp.raw[*] -> master items -> LLD + dependent items.
+        Data flow: ontap-poller.py (systemd timer) -> ONTAP REST API -> JSON cache files -> UserParameter netapp.raw[*] -> master items -> LLD + dependent items.
         Covers: cluster info & performance (IOPS/latency/throughput), nodes (state, HW health), aggregates (state, capacity, perf), volumes (state, capacity, perf), SVMs, disk summary, SnapMirror relationships (healthy, state, lag).
         Apply once per monitored cluster: set {$NETAPP.CLUSTER.ID} per host (onprem / fsx) and make sure the agent Hostname list contains each Zabbix host name.
         Tested against ONTAP 9.13+ REST API (AFF A-series, incl. AFF-A20) and FSx for ONTAP.
@@ -373,7 +373,7 @@ zabbix_export:
           key: 'netapp.raw[{$NETAPP.CLUSTER.ID},aggregates]'
           history: '0'
           value_type: TEXT
-          description: 'Raw JSON from cached ONTAP REST endpoint (aggregates). Populated by ontap_poller.py.'
+          description: 'Raw JSON from cached ONTAP REST endpoint (aggregates). Populated by ontap-poller.py.'
           tags:
             - tag: component
               value: raw
@@ -383,7 +383,7 @@ zabbix_export:
           key: 'netapp.raw[{$NETAPP.CLUSTER.ID},cluster]'
           history: '0'
           value_type: TEXT
-          description: 'Raw JSON from cached ONTAP REST endpoint (cluster). Populated by ontap_poller.py.'
+          description: 'Raw JSON from cached ONTAP REST endpoint (cluster). Populated by ontap-poller.py.'
           tags:
             - tag: component
               value: raw
@@ -393,7 +393,7 @@ zabbix_export:
           key: 'netapp.raw[{$NETAPP.CLUSTER.ID},disks]'
           history: '0'
           value_type: TEXT
-          description: 'Raw JSON from cached ONTAP REST endpoint (disks). Populated by ontap_poller.py.'
+          description: 'Raw JSON from cached ONTAP REST endpoint (disks). Populated by ontap-poller.py.'
           tags:
             - tag: component
               value: raw
@@ -403,7 +403,7 @@ zabbix_export:
           key: 'netapp.raw[{$NETAPP.CLUSTER.ID},nodes]'
           history: '0'
           value_type: TEXT
-          description: 'Raw JSON from cached ONTAP REST endpoint (nodes). Populated by ontap_poller.py.'
+          description: 'Raw JSON from cached ONTAP REST endpoint (nodes). Populated by ontap-poller.py.'
           tags:
             - tag: component
               value: raw
@@ -413,7 +413,7 @@ zabbix_export:
           key: 'netapp.raw[{$NETAPP.CLUSTER.ID},peers]'
           history: '0'
           value_type: TEXT
-          description: 'Raw JSON from cached ONTAP REST endpoint (svms). Populated by ontap_poller.py.'
+          description: 'Raw JSON from cached ONTAP REST endpoint (svms). Populated by ontap-poller.py.'
           tags:
             - tag: component
               value: raw
@@ -423,7 +423,7 @@ zabbix_export:
           key: 'netapp.raw[{$NETAPP.CLUSTER.ID},snapmirror]'
           history: '0'
           value_type: TEXT
-          description: 'Raw JSON from cached ONTAP REST endpoint (snapmirror). Populated by ontap_poller.py.'
+          description: 'Raw JSON from cached ONTAP REST endpoint (snapmirror). Populated by ontap-poller.py.'
           tags:
             - tag: component
               value: raw
@@ -433,7 +433,7 @@ zabbix_export:
           key: 'netapp.raw[{$NETAPP.CLUSTER.ID},svms]'
           history: '0'
           value_type: TEXT
-          description: 'Raw JSON from cached ONTAP REST endpoint (svms). Populated by ontap_poller.py.'
+          description: 'Raw JSON from cached ONTAP REST endpoint (svms). Populated by ontap-poller.py.'
           tags:
             - tag: component
               value: raw
@@ -443,7 +443,7 @@ zabbix_export:
           key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
           history: '0'
           value_type: TEXT
-          description: 'Raw JSON from cached ONTAP REST endpoint (volumes). Populated by ontap_poller.py.'
+          description: 'Raw JSON from cached ONTAP REST endpoint (volumes). Populated by ontap-poller.py.'
           tags:
             - tag: component
               value: raw
@@ -508,7 +508,7 @@ zabbix_export:
               expression: 'fuzzytime(/NetApp ONTAP AFF-A20 - Zabbix Agent2/vfs.file.time["{$NETAPP.CACHE.DIR}/{$NETAPP.CLUSTER.ID}_cluster.json",modify],{$NETAPP.DATA.MAXAGE})=0'
               name: 'NetApp [{$NETAPP.CLUSTER.ID}]: cache data is stale (poller not running)'
               priority: WARNING
-              description: 'ontap_poller.py has not refreshed cache files. Check systemd timer ontap-poller.timer and API connectivity.'
+              description: 'ontap-poller.py has not refreshed cache files. Check systemd timer ontap-poller.timer and API connectivity.'
       discovery_rules:
         - uuid: cfc4aac39c70429c88ffa2ee94aee2f6
           name: 'Aggregate discovery'
@@ -1502,6 +1502,41 @@ zabbix_export:
                   value: volume
                 - tag: component
                   value: capacity
+            - uuid: 7e23140966dc484a9cd0fb8d251037be
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space snapshot within reserve'
+              type: DEPENDENT
+              key: 'netapp.vol.space.snapinreserve[{#SVMNAME},{#VOLNAME}]'
+              history: 31d
+              trends: '365d'
+              value_type: FLOAT
+              units: B
+              description: |
+                Snapshot blocks held inside the configured snapshot reserve - the part that does NOT
+                steal space from the active filesystem. Computed as snapshot.used - snapshot_spill.
+                On Trident-provisioned volumes snapshotReserve is 0, so this band sits flat at zero
+                and all snapshot consumption appears in the spill band instead.
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.records[?(@.name==''{#VOLNAME}'' && @.svm.name==''{#SVMNAME}'')].space.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '{}'
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var s = JSON.parse(value);
+                      if (!s || !s.snapshot) { return 0; }
+                      return Math.max(0, (s.snapshot.used || 0) - (s.snapshot_spill || 0));
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'netapp.raw[{$NETAPP.CLUSTER.ID},volumes]'
+              tags:
+                - tag: component
+                  value: volume
+                - tag: component
+                  value: capacity
             - uuid: 18803ba82f264e1d9a39b4f1bb51f361
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space snapshot spill'
               type: DEPENDENT
@@ -1619,33 +1654,8 @@ zabbix_export:
                 - tag: component
                   value: capacity
           trigger_prototypes:
-            - uuid: 2072f50844eb4269bcaef03fbf50034e
-              expression: '100*last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}])/last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.size[{#SVMNAME},{#VOLNAME}])>{$NETAPP.VOL.SPILL.PCT.HIGH:"{#VOLNAME}"}'
-              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: snapshot spill over {$NETAPP.VOL.SPILL.PCT.HIGH}% of provisioned size'
-              event_name: 'Volume [{#SVMNAME}/{#VOLNAME}]: snapshot spill is consuming the active filesystem'
-              priority: HIGH
-              description: |
-                Snapshots are consuming space beyond the snapshot reserve, which comes straight out of
-                the active filesystem. On Trident-provisioned volumes snapshotReserve is normally 0, so
-                ALL snapshot usage is spill — this trigger therefore thresholds on spill as a share of
-                provisioned size, not on spill being non-zero.
-                Check retention depth first (volume snapshot show -fields create-time,size,owners);
-                snapshots owned by snapmirror are pinned until the next successful transfer.
-              tags:
-                - tag: scope
-                  value: capacity
-            - uuid: d0f2ec6966fd4e1385316aea3beb287b
-              expression: '100*last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}])/last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.size[{#SVMNAME},{#VOLNAME}])>{$NETAPP.VOL.SPILL.PCT.WARN:"{#VOLNAME}"}'
-              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: snapshot spill over {$NETAPP.VOL.SPILL.PCT.WARN}% of provisioned size'
-              priority: WARNING
-              dependencies:
-                - name: 'Volume [{#SVMNAME}/{#VOLNAME}]: snapshot spill over {$NETAPP.VOL.SPILL.PCT.HIGH}% of provisioned size'
-                  expression: '100*last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}])/last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.size[{#SVMNAME},{#VOLNAME}])>{$NETAPP.VOL.SPILL.PCT.HIGH:"{#VOLNAME}"}'
-              tags:
-                - tag: scope
-                  value: capacity
             - uuid: 0a62f363fdda4b6f97a734b0042fbc41
-              expression: 'timeleft(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}],7d,100)<{$NETAPP.VOL.TIMELEFT.HIGH:"{#VOLNAME}"}'
+              expression: 'timeleft(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}],7d,100)<{$NETAPP.VOL.TIMELEFT.HIGH:"{#VOLNAME}"} and last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}])>{$NETAPP.VOL.TIMELEFT.MINPUSED:"{#VOLNAME}"}'
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: projected full in under {$NETAPP.VOL.TIMELEFT.HIGH}'
               priority: HIGH
               description: |
@@ -1657,12 +1667,12 @@ zabbix_export:
                 - tag: scope
                   value: capacity
             - uuid: 458e31ab66a7435bbb86b1c2b6265d05
-              expression: 'timeleft(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}],7d,100)<{$NETAPP.VOL.TIMELEFT.WARN:"{#VOLNAME}"}'
+              expression: 'timeleft(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}],7d,100)<{$NETAPP.VOL.TIMELEFT.WARN:"{#VOLNAME}"} and last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}])>{$NETAPP.VOL.TIMELEFT.MINPUSED:"{#VOLNAME}"}'
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: projected full in under {$NETAPP.VOL.TIMELEFT.WARN}'
               priority: WARNING
               dependencies:
                 - name: 'Volume [{#SVMNAME}/{#VOLNAME}]: projected full in under {$NETAPP.VOL.TIMELEFT.HIGH}'
-                  expression: 'timeleft(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}],7d,100)<{$NETAPP.VOL.TIMELEFT.HIGH:"{#VOLNAME}"}'
+                  expression: 'timeleft(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}],7d,100)<{$NETAPP.VOL.TIMELEFT.HIGH:"{#VOLNAME}"} and last(/NetApp ONTAP AFF-A20 - Zabbix Agent2/netapp.vol.space.pused[{#SVMNAME},{#VOLNAME}])>{$NETAPP.VOL.TIMELEFT.MINPUSED:"{#VOLNAME}"}'
               tags:
                 - tag: scope
                   value: capacity
@@ -1711,6 +1721,11 @@ zabbix_export:
             - uuid: 7d8a0b369b1c4b25ab1bd910a3d3884c
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space composition'
               type: STACKED
+              ymin_type_1: FIXED
+              ymax_type_1: ITEM
+              ymax_item_1:
+                host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                key: 'netapp.vol.space.size[{#SVMNAME},{#VOLNAME}]'
               graph_items:
                 - color: 0275B8
                   item:
@@ -1722,15 +1737,92 @@ zabbix_export:
                     host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
                     key: 'netapp.vol.space.metadata[{#SVMNAME},{#VOLNAME}]'
                 - sortorder: '2'
+                  color: F2C94C
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.snapinreserve[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '3'
                   color: E67E22
                   item:
                     host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
                     key: 'netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}]'
-                - sortorder: '3'
-                  color: C8C8C8
+                - sortorder: '4'
+                  color: A6B1BB
                   item:
                     host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
                     key: 'netapp.vol.space.avail[{#SVMNAME},{#VOLNAME}]'
+            - uuid: 4b7f9ce134b844ee8d71bc4058e310ef
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space composition (lines)'
+              ymin_type_1: FIXED
+              ymax_type_1: ITEM
+              ymax_item_1:
+                host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                key: 'netapp.vol.space.size[{#SVMNAME},{#VOLNAME}]'
+              graph_items:
+                - color: 0275B8
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.userdata[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '1'
+                  color: 7E7E7E
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.metadata[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '2'
+                  color: F2C94C
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.snapinreserve[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '3'
+                  color: E67E22
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '4'
+                  color: A6B1BB
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.avail[{#SVMNAME},{#VOLNAME}]'
+            - uuid: 4e39b0fc02e9469182d3ed50e52c98cf
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space used breakdown'
+              type: STACKED
+              graph_items:
+                - color: 0275B8
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.userdata[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '1'
+                  color: 7E7E7E
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.metadata[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '2'
+                  color: F2C94C
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.snapinreserve[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '3'
+                  color: E67E22
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}]'
+            - uuid: 81352f5adc3148b6b01b04b9a0747cf5
+              name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space components detail'
+              graph_items:
+                - color: 7E7E7E
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.metadata[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '1'
+                  color: F2C94C
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.snapinreserve[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '2'
+                  color: E67E22
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}]'
             - uuid: ce3792f4ef8548fca532401a7bb38357
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space growth rate'
               graph_items:
@@ -1787,7 +1879,7 @@ zabbix_export:
           description: 'Aggregate used %% warning. Context macro per aggregate supported.'
         - macro: '{$NETAPP.CACHE.DIR}'
           value: /var/cache/ontap
-          description: 'Cache directory used by ontap_poller.py and the UserParameter.'
+          description: 'Cache directory used by ontap-poller.py and the UserParameter.'
         - macro: '{$NETAPP.CLUSTER.ID}'
           value: onprem
           description: 'Cluster id — must match a [cluster:<id>] section in /etc/ontap-poller.conf (e.g. onprem, fsx).'
@@ -1848,15 +1940,12 @@ zabbix_export:
         - macro: '{$NETAPP.VOL.PUSED.WARN}'
           value: '85'
           description: 'Volume used %% warning. Context macro per volume supported.'
-        - macro: '{$NETAPP.VOL.SPILL.PCT.HIGH}'
-          value: '20'
-          description: 'Snapshot spill high, %% of provisioned volume size. Context macro per volume supported.'
-        - macro: '{$NETAPP.VOL.SPILL.PCT.WARN}'
-          value: '10'
-          description: 'Snapshot spill warning, %% of provisioned volume size. Context macro per volume supported.'
         - macro: '{$NETAPP.VOL.TIMELEFT.HIGH}'
           value: 2d
           description: 'Projected time to 100%% used, high. Regression over 7d of history.'
+        - macro: '{$NETAPP.VOL.TIMELEFT.MINPUSED}'
+          value: '50'
+          description: 'Minimum used %% before the time-to-full projection is allowed to alert. Suppresses wild regressions on nearly empty volumes and during the first days after import.'
         - macro: '{$NETAPP.VOL.TIMELEFT.WARN}'
           value: 7d
           description: 'Projected time to 100%% used, warning. Regression over 7d of history.'

@@ -51,7 +51,8 @@ zabbix-ontap-snapmirror/
 │   ├── template_netapp_ontap_agent2_active.yaml   # import into Zabbix UI
 │   └── dashboard_netapp_ontap.yaml                # optional dashboard export
 └── docs/
-    └── ontap-user-creation.md       # read-only ONTAP account (both options)
+    ├── ontap-user-creation.md       # read-only ONTAP account (both options)
+    └── reading-the-space-graphs.md  # NOC reference for the space composition graph
 ```
 
 ---
@@ -64,7 +65,7 @@ zabbix-ontap-snapmirror/
 | Nodes (LLD) | state, membership, uptime, over-temp, failed fans/PSUs, NVRAM battery | node not up, hardware failure, restart |
 | Aggregates (LLD) | state, size/used/available/%used, IOPS / latency / throughput | offline, > 80 % / 90 % used |
 | Volumes (LLD) | state, size/used/available/%used, IOPS / latency / throughput | offline, > 85 % / 95 % used, latency > 10 ms |
-| Volume space breakdown (LLD) | user data, metadata, snapshot used / spill / reserve, logical vs used vs physical, per-interval growth of data and snapshots | snapshot spill > 10 % / 20 % of provisioned size, projected full in < 7 d / 2 d |
+| Volume space breakdown (LLD) | user data, metadata, snapshot used / within-reserve / spill / reserve, logical vs used vs physical, per-interval growth of data and snapshots | projected full in < 7 d / 2 d (no snapshot alerting — see below) |
 | SVMs (LLD) | state | not running |
 | Disks | total / broken / spare counts | any broken disk |
 | Cluster peers | peer + authentication state | peer unavailable |
@@ -235,6 +236,9 @@ Verified against a live 50 GiB Trident volume: the four bands reconcile with
 Use `space.total_metadata`, **not** `space.metadata` — only the former makes
 `user_data + metadata + snapshot.used` reconcile with `space.used`.
 
+How to read them is written up for the NOC in
+[`docs/reading-the-space-graphs.md`](docs/reading-the-space-graphs.md).
+
 Three graph prototypes per volume:
 
 | Graph | Type | Answers |
@@ -243,15 +247,18 @@ Three graph prototypes per volume:
 | `space growth rate` | line | did the workload change regime, and when |
 | `logical vs used vs physical` | line | storage-efficiency savings, and aggregate footprint vs volume fill |
 
-### Snapshot spill on Trident volumes
+### Snapshot spill is measured, not alerted on
 
 Trident provisions with `snapshotReserve: "0"`, so **all** snapshot consumption is
-spill by definition and a "spill > 0" trigger would fire on every volume. The
-triggers therefore threshold on spill as a *share of provisioned size*
-(`{$NETAPP.VOL.SPILL.PCT.WARN/HIGH}`, 10 % / 20 %), which is scale-free and works
-whether or not a reserve is configured.
+spill by definition — a "spill > 0" trigger would fire on every volume, and a
+percentage threshold still asks a NOC to judge whether a given figure is normal
+for that workload. That judgement needs workload context an on-call operator
+does not have at 3am, so **there are no snapshot triggers**.
 
-Spill is read straight from `space.snapshot_spill` — no calculated item needed.
+Spill is collected, graphed and retained for 31 d / 365 d of trends. It is
+diagnostic data for whoever investigates a capacity problem, not a page. The
+alerting on volumes stays where it is unambiguous: the existing used-% triggers
+and the time-to-full projection below.
 
 ### Growth items use SIMPLE_CHANGE, not CHANGE_PER_SECOND
 
