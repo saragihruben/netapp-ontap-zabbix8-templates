@@ -171,11 +171,26 @@ the **peak**, not the steady state.
 
 ## The companion graphs
 
-**`space composition (lines)`** — the same five series drawn as lines instead of
-stacked bands, with the Y axis pinned to the provisioned size. Over a month each
-component has its own readable trajectory rather than a thickness you have to
-judge against whatever moved beneath it, and the fixed scale means two volumes
-can be compared side by side. Use stacked for a point in time, lines for a trend.
+**`space composition (lines)`** — the same components drawn as lines instead of
+stacked bands, plus two reference series the stacked graph cannot carry:
+**`space.size`** (purple, the provisioned ceiling) and **`space.used`** (dark
+slate, the total that approaches it). Read the gap between those two lines as the
+real headroom, then read the component lines below to see what is closing it.
+
+Size and used are deliberately absent from the *stacked* graph: Zabbix stacks
+every item in a STACKED graph, so a size series would sit on top of the bands and
+double the apparent height. On the stacked graph the ceiling is already the top
+of the stack, since the bands sum to `space.size`.
+
+Over a month each component has its own readable trajectory rather than a
+thickness you have to judge against whatever moved beneath it, and the pinned
+scale means two volumes can be compared side by side. Use stacked for a point in
+time, lines for a trend.
+
+**`space used %`** — used as a percentage of provisioned, on a fixed 0–100 axis
+so every volume is directly comparable and "nearly full" looks the same
+everywhere. This is the fastest answer to *which volumes are close to their
+limit*; the composition graphs answer *why*.
 
 **`space used breakdown`** — the same stack minus free, so the Y axis scales to
 used space. Metadata at 1.5 % and spill at 6.5 % are barely visible when free

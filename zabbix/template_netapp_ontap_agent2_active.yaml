@@ -1713,6 +1713,10 @@ zabbix_export:
                     key: 'netapp.vol.latency[{#SVMNAME},{#VOLNAME},total]'
             - uuid: 8800cf2c2b9e491e953446ef0b5e9509
               name: 'Volume [{#SVMNAME}/{#VOLNAME}]: space used %'
+              yaxismin: '0'
+              yaxismax: '100'
+              ymin_type_1: FIXED
+              ymax_type_1: FIXED
               graph_items:
                 - color: E67E22
                   item:
@@ -1759,26 +1763,36 @@ zabbix_export:
                 host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
                 key: 'netapp.vol.space.size[{#SVMNAME},{#VOLNAME}]'
               graph_items:
-                - color: 0275B8
+                - color: 8E44AD
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.size[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '1'
+                  color: 2C3E50
+                  item:
+                    host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
+                    key: 'netapp.vol.space.used[{#SVMNAME},{#VOLNAME}]'
+                - sortorder: '2'
+                  color: 0275B8
                   item:
                     host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
                     key: 'netapp.vol.space.userdata[{#SVMNAME},{#VOLNAME}]'
-                - sortorder: '1'
+                - sortorder: '3'
                   color: 7E7E7E
                   item:
                     host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
                     key: 'netapp.vol.space.metadata[{#SVMNAME},{#VOLNAME}]'
-                - sortorder: '2'
+                - sortorder: '4'
                   color: F2C94C
                   item:
                     host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
                     key: 'netapp.vol.space.snapinreserve[{#SVMNAME},{#VOLNAME}]'
-                - sortorder: '3'
+                - sortorder: '5'
                   color: E67E22
                   item:
                     host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
                     key: 'netapp.vol.space.snapspill[{#SVMNAME},{#VOLNAME}]'
-                - sortorder: '4'
+                - sortorder: '6'
                   color: A6B1BB
                   item:
                     host: 'NetApp ONTAP AFF-A20 - Zabbix Agent2'
