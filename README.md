@@ -48,8 +48,10 @@ zabbix-ontap-snapmirror/
 ├── agent/
 │   └── zabbix_agent2_netapp.conf    # -> /etc/zabbix/zabbix_agent2.d/netapp.conf
 ├── zabbix/
-│   ├── template_netapp_ontap_agent2_active.yaml   # import into Zabbix UI
-│   └── dashboard_netapp_ontap.yaml                # optional dashboard export
+│   ├── zbx8lts_export_ontap-templates.yaml        # CURRENT - import into Zabbix UI
+│   ├── zbx8lts_export_ontap-dashboards.yaml       # CURRENT - import from Dashboards page
+│   ├── template_netapp_ontap_agent2_active.yaml   # superseded, kept for history
+│   └── dashboard_netapp_ontap.yaml                # superseded, kept for history
 └── docs/
     ├── ontap-user-creation.md       # read-only ONTAP account (both options)
     └── reading-the-space-graphs.md  # NOC reference for the space composition graph
@@ -282,6 +284,57 @@ All of these are **dependent** items, so they add no polling load — the master
 item is unchanged. Eight prototypes × ~250 volumes ≈ 2,000 extra items, and
 `DISCARD_UNCHANGED_HEARTBEAT 1h` on the capacity bands means a volume that is not
 changing writes one value per hour instead of sixty.
+
+---
+
+## Which files are current
+
+The `zbx8lts_export_*` files are what is running. The two September files are kept
+for history only - they predate network monitoring and should not be imported.
+
+| File | Import from |
+|------|-------------|
+| `zabbix/zbx8lts_export_ontap-templates.yaml` | Data collection -> Templates -> Import |
+| `zabbix/zbx8lts_export_ontap-dashboards.yaml` | Dashboards -> All dashboards -> Import |
+
+The dashboards file is a **global** dashboard, not a template dashboard. Importing it
+from the Templates page reports "no changes" and silently does nothing.
+
+Order matters on a fresh deploy: **install the poller first, then import the template.**
+Discovery rules whose master item has no cache file produce no error - the LLD rules
+simply stay empty.
+
+---
+
+## Network monitoring
+
+Added after the 12 Nov 2026 outage, where both `s3-object` LIFs sat stranded on
+`csm-prd-nas1-02:e2d` and nothing alerted. The LIFs read `up/up` throughout - link
+state alone never exposes this.
+
+Two endpoints, two LLD rules, four cluster-level rollups:
+
+| Collected | Why |
+|-----------|-----|
+| `location.is_home` on each LIF | a LIF that failed over and never came back |
+| `reachability` on each port | a port that cannot reach its assigned broadcast domain |
+| `reachable_broadcast_domains` | names the actual fault, e.g. "e2d reaches Default instead of s3:NetApp_S3" |
+| `location.auto_revert` | a stranded LIF that will not return on its own |
+
+The `network` option in `ontap-poller.conf` controls this per cluster. It defaults to
+`true`; set `network = false` for FSx, which does not expose the same port topology.
+
+Both port triggers alert per port **and** at the cluster rollup, so one fault can
+produce several alerts. The per-port triggers name the port and are the actionable
+ones.
+
+### Known standing alert
+
+`netapp.lif.no_autorevert` counts every LIF with `auto_revert: false`, including SAN
+LIFs (NVMe/TCP, iSCSI) whose `failover-policy` is `disabled` and for which auto-revert
+has no meaning. On a cluster with SAN LIFs this trigger stays active permanently at a
+non-zero count. Filtering them out requires `location.failover` from the poller, which
+is not collected in this version.
 
 ---
 

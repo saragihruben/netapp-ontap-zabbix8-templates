@@ -20,6 +20,11 @@ import sys
 import urllib.error
 import urllib.request
 
+# Bump whenever the endpoint field lists change, so a deployed copy can be
+# identified with `ontap-poller.py --version` rather than by file size.
+__version__ = "3.0"
+VERSION_NOTE = "adds lifs + ports endpoints"
+
 CONF_FILE = os.environ.get("ONTAP_POLLER_CONF", "/etc/ontap-poller.conf")
 
 ENDPOINTS = {
@@ -43,6 +48,18 @@ ENDPOINTS = {
     "snapmirror": ("/api/snapmirror/relationships?fields=source.path,destination.path,state,healthy,"
                    "lag_time,unhealthy_reason,transfer.state,transfer.bytes_transferred,transfer.end_time,"
                    "last_transfer_type,policy.name,transfer_schedule.name,throttle"),
+    # Network: added after the 12 Nov outage, where both s3-object LIFs sat
+    # stranded on csm-prd-nas1-02:e2d and nothing alerted. The LIFs read up/up,
+    # so link state alone never exposes it — location.is_home on the LIF and
+    # reachability on the port are what do.
+    "lifs":       ("/api/network/ip/interfaces?fields=uuid,name,svm.name,state,ip.address,"
+                   "location.is_home,location.auto_revert,location.home_node.name,"
+                   "location.home_port.name,location.node.name,location.port.name"),
+    # reachable_broadcast_domains is not in the handover field list; it is what
+    # names the actual fault ("e2d reaches Default instead of s3:NetApp_S3"),
+    # so it is collected for diagnosis alongside the assigned broadcast domain.
+    "ports":      ("/api/network/ethernet/ports?fields=uuid,name,node.name,type,state,mtu,speed,"
+                   "broadcast_domain.name,reachability,reachable_broadcast_domains.name"),
 }
 
 EMPTY = {"records": [], "num_records": 0}
@@ -100,6 +117,7 @@ def main():
         password = cfg.get(section, "password")
         verify = cfg.getboolean(section, "verify_ssl", fallback=False)
         want_sm = cfg.getboolean(section, "snapmirror", fallback=True)
+        want_net = cfg.getboolean(section, "network", fallback=True)
 
         base_url = f"https://{host}"
         auth = base64.b64encode(f"{user}:{password}".encode()).decode()
@@ -112,6 +130,9 @@ def main():
             out_file = os.path.join(cache_dir, f"{cid}_{ep}.json")
             if ep == "snapmirror" and not want_sm:
                 atomic_write(out_file, EMPTY)  # keep LLD empty & items supported
+                continue
+            if ep in ("lifs", "ports") and not want_net:
+                atomic_write(out_file, EMPTY)  # same: LLD empty, items supported
                 continue
             try:
                 data = fetch(base_url, path, auth, ctx, timeout)
@@ -128,4 +149,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if "--version" in sys.argv:
+        print(f"ontap-poller {__version__} ({VERSION_NOTE})")
+        sys.exit(0)
     sys.exit(main())

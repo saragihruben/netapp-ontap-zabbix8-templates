@@ -20,6 +20,10 @@ verify_ssl  = false               # set true once you trust the cluster certific
 # SnapMirror relationship health is read from the DESTINATION cluster, so the
 # source side does not need it. Leave false to keep that host's SnapMirror LLD empty.
 snapmirror  = false
+# LIF and ethernet-port collection (lifs / ports cache files). Leave true on the
+# on-prem cluster — this is what detects a LIF stranded off its home port and a
+# port whose reachability has broken, neither of which shows up as a link-down.
+network     = true
 
 # ----- Destination cluster (Amazon FSx for NetApp ONTAP) ----------------------
 [cluster:fsx]
@@ -28,3 +32,7 @@ username    = fsxadmin            # or a dedicated read-only user
 password    = CHANGE_ME
 verify_ssl  = false
 snapmirror  = true                # relationship health + lag are discovered here
+# FSx manages its own networking and does not expose the same port topology.
+# Set false to keep the LIF/port LLD empty on the FSx host rather than
+# discovering entities you cannot act on.
+network     = false
